@@ -3,8 +3,34 @@ import createHttpError from "http-errors"
 import { Op } from "sequelize"
 import ExperiencesModel from "./experiencesModel.js"
 import UsersModel from "../users/usersModel.js"
+import { CloudinaryStorage } from "multer-storage-cloudinary"
+import { v2 as cloudinary } from "cloudinary"
+import multer from "multer"
 
 const experiencesRouter = express.Router()
+
+const cloudinaryUploader = multer({
+    storage: new CloudinaryStorage({
+        cloudinary,
+        params: {
+            folder: "U5-W1-D5-SP/experiences",
+        },
+    }),
+}).single("experience")
+
+//POST a picture to user
+experiencesRouter.post("/:userID/experiences/:expID/picture", cloudinaryUploader, async (req, res, next) => {
+    try {
+        const [numberOfUpdatedRows, updatedRecords] = await ExperiencesModel.update({ image: req.file.path }, { where: { expID: req.params.expID }, returning: true })
+        if (numberOfUpdatedRows === 1) {
+            res.send(updatedRecords[0])
+        } else {
+            next(createHttpError(404, `Post with id ${req.params.expID} not found!`))
+        }
+    } catch (error) {
+        next(error)
+    }
+})
 
 //POST an experience
 experiencesRouter.post("/:userID/experiences", async (req, res, next) => {

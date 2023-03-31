@@ -4,8 +4,20 @@ import { Op } from "sequelize"
 import PostsModel from "./postsModel.js"
 import UsersModel from "../users/usersModel.js"
 import CommentsModel from "../comments/commentsModel.js"
+import { CloudinaryStorage } from "multer-storage-cloudinary"
+import { v2 as cloudinary } from "cloudinary"
+import multer from "multer"
 
 const postsRouter = express.Router()
+
+const cloudinaryUploader = multer({
+    storage: new CloudinaryStorage({
+        cloudinary,
+        params: {
+            folder: "U5-W1-D5-SP/posts",
+        },
+    }),
+}).single("post")
 
 //POST a post with userID
 postsRouter.post("/", async (req, res, next) => {
@@ -90,6 +102,20 @@ postsRouter.get("/:userID", async (req, res, next) => {
 postsRouter.put("/:postID", async (req, res, next) => {
     try {
         const [numberOfUpdatedRows, updatedRecords] = await PostsModel.update(req.body, { where: { postID: req.params.postID }, returning: true })
+        if (numberOfUpdatedRows === 1) {
+            res.send(updatedRecords[0])
+        } else {
+            next(createHttpError(404, `Post with id ${req.params.postID} not found!`))
+        }
+    } catch (error) {
+        next(error)
+    }
+})
+
+//POST a picture to a post
+postsRouter.post("/:postID/picture", cloudinaryUploader, async (req, res, next) => {
+    try {
+        const [numberOfUpdatedRows, updatedRecords] = await PostsModel.update({ image: req.file.path }, { where: { postID: req.params.postID }, returning: true })
         if (numberOfUpdatedRows === 1) {
             res.send(updatedRecords[0])
         } else {
